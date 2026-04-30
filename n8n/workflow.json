@@ -1,0 +1,69 @@
+{
+  "name": "Real Execution Engine — Master Flow",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook Input",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "path": "execute",
+        "httpMethod": "POST"
+      },
+      "position": [100, 300]
+    },
+    {
+      "id": "2",
+      "name": "LLM Decider",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "http://engine:3000/execute",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "input", "value": "={{ $json.body.input }}" }
+          ]
+        }
+      },
+      "position": [300, 300]
+    },
+    {
+      "id": "3",
+      "name": "Router por Acción",
+      "type": "n8n-nodes-base.switch",
+      "parameters": {
+        "dataPropertyName": "action",
+        "rules": {
+          "rules": [
+            { "value": "generate_repo_and_deploy", "output": 0 },
+            { "value": "monetize", "output": 1 },
+            { "value": "create_automation", "output": 2 },
+            { "value": "store_knowledge", "output": 3 }
+          ]
+        }
+      },
+      "position": [500, 300]
+    },
+    {
+      "id": "4",
+      "name": "Notify Slack/Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TELEGRAM_WEBHOOK }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "text", "value": "={{ '✅ Decisión: ' + $json.decision + ' | Impacto: ' + $json.impact + '/10' }}" }
+          ]
+        }
+      },
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Input": { "main": [[{ "node": "LLM Decider", "type": "main", "index": 0 }]] },
+    "LLM Decider": { "main": [[{ "node": "Router por Acción", "type": "main", "index": 0 }]] },
+    "Router por Acción": { "main": [[{ "node": "Notify Slack/Telegram", "type": "main", "index": 0 }]] }
+  }
+}
